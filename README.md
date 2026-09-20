@@ -132,17 +132,9 @@ mvn test
 
 ## What's Next
 
-- [ ] Split into microservices (URL service, Analytics service, Auth service) behind an API gateway with Kafka-based async analytics
-- [ ] Integration tests with Testcontainers
-- [ ] API documentation via Swagger/OpenAPI
-- [ ] Lightweight frontend to consume the API end-to-end
-
----
-
-## Author
-
-**Sathvik Solomon**
-[GitHub](https://github.com/SathvikSolomonS) · [LinkedIn](https://linkedin.com/in/sathviksolomon)
+- Split into microservices (URL service, Analytics service, Auth service) behind an API gateway with Kafka-based async analytics — see [url-shortener-microservices](#) *(planned second project)*
+- Integration tests with Testcontainers
+- API documentation via Swagger/OpenAPI
 
 ## License
 
