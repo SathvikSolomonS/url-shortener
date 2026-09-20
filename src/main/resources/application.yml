@@ -44,6 +44,10 @@ app:
     refill-tokens: 20
     refill-duration-seconds: 60
 
+  ai:
+    groq-api-key: ${GROQ_API_KEY:}
+    enabled: ${AI_TAGGING_ENABLED:false}
+
 management:
   endpoints:
     web:

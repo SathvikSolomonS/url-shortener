@@ -39,6 +39,10 @@ public class Url {
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
+    
+    @Column(name = "category", length = 50)
+    private String category;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

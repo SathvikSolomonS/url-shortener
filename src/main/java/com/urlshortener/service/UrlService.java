@@ -7,6 +7,7 @@ import com.urlshortener.entity.User;
 import com.urlshortener.repository.UrlRepository;
 import com.urlshortener.util.Base62Encoder;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class UrlService {
     private final UrlRepository urlRepository;
     private final Base62Encoder base62Encoder;
     private final UrlCacheService urlCacheService;
+    private final AiTaggingService aiTaggingService;
 
     @Value("${app.shortener.base-url}")
     private String baseUrl;
@@ -41,6 +43,8 @@ public class UrlService {
         String shortCode = base62Encoder.encode(saved.getId());
         saved.setShortCode(shortCode);
         urlRepository.save(saved);
+
+        aiTaggingService.categorizeUrl(saved.getId(), saved.getOriginalUrl());
 
         return toResponse(saved);
     }
@@ -63,6 +67,7 @@ public class UrlService {
                 .originalUrl(url.getOriginalUrl())
                 .clickCount(url.getClickCount())
                 .expiresAt(url.getExpiresAt())
+                .category(url.getCategory())
                 .createdAt(url.getCreatedAt())
                 .build();
     }

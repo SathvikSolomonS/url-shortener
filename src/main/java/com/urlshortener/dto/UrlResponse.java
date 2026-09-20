@@ -20,5 +20,6 @@ public class UrlResponse {
     private String originalUrl;
     private Long clickCount;
     private LocalDateTime expiresAt;
+    private String category;
     private LocalDateTime createdAt;
 }
