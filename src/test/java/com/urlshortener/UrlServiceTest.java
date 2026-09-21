@@ -1,5 +1,6 @@
 package com.urlshortener;
 
+import com.urlshortener.service.AiTaggingService;
 import com.urlshortener.dto.CreateUrlRequest;
 import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.entity.Url;
@@ -36,8 +37,13 @@ class UrlServiceTest {
     @Mock
     private UrlCacheService urlCacheService;
 
+    @Mock
+    private AiTaggingService aiTaggingService;
+
     @InjectMocks
     private UrlService urlService;
+
+
 
     private User testUser;
 
