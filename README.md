@@ -1,10 +1,11 @@
-# 🔗 URL Shortener — Spring Boot Backend
+# 🔗 URL Shortener — Full-Stack Spring Boot + React
 
-A production-style URL shortening service built with Spring Boot, featuring Redis caching, JWT authentication, rate limiting, AI-powered categorization, and full Docker containerization with CI/CD.
+A production-style URL shortening service built with Spring Boot and React, featuring Redis caching, JWT authentication, rate limiting, AI-powered categorization, and full Docker containerization with CI/CD.
 
 ![CI](https://github.com/SathvikSolomonS/url-shortener/actions/workflows/ci.yml/badge.svg)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-brightgreen)
+![React](https://img.shields.io/badge/React-Vite-61DAFB)
 ![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
@@ -13,6 +14,7 @@ A production-style URL shortening service built with Spring Boot, featuring Redi
 ## 📋 Table of Contents
 
 - [Overview](#overview)
+- [Project Structure](#project-structure)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
@@ -26,12 +28,27 @@ A production-style URL shortening service built with Spring Boot, featuring Redi
 
 ## Overview
 
-This isn't a tutorial-style URL shortener — it's built to demonstrate real backend engineering concerns: cache invalidation strategy, race-condition-safe concurrency, stateless authentication design, async processing, and CI/CD automation. Every feature below was built with a specific production trade-off in mind, documented in [Key Design Decisions](#key-design-decisions).
+This isn't a tutorial-style URL shortener — it's built to demonstrate real backend engineering concerns: cache invalidation strategy, race-condition-safe concurrency, stateless authentication design, async processing, and CI/CD automation, wrapped in a working React UI so the whole system can be demoed live, not just tested with curl. Every feature below was built with a specific production trade-off in mind, documented in [Key Design Decisions](#key-design-decisions).
+
+## Project Structure
+
+This is a monorepo containing both the backend API and a React frontend:
+
+```
+url-shortener/
+├── src/                        # Spring Boot backend
+├── url-shortener-frontend/     # React + Vite frontend
+├── pom.xml
+└── docker-compose.yml
+```
+
+The frontend provides a full UI: register/login, create shortened URLs, and view your links with click counts and AI-generated categories.
 
 ## Features
 
 | Feature | Description |
 |---|---|
+| 💻 **React Frontend** | Full UI for registration, login, and managing shortened URLs — not just an API |
 | 🔗 **URL Shortening** | Base62 encoding derived from database auto-increment IDs — compact, collision-free short codes |
 | ⚡ **Redis Caching** | Cache-aside pattern with TTL-based expiry on the redirect lookup path |
 | 🛡️ **Rate Limiting** | Atomic Redis counters (token-bucket style), per-IP |
@@ -46,6 +63,7 @@ This isn't a tutorial-style URL shortener — it's built to demonstrate real bac
 ## Tech Stack
 
 - **Backend:** Java 21, Spring Boot 3.3, Spring Security, Spring Data JPA
+- **Frontend:** React (Vite), React Router, Axios
 - **Database:** MySQL 8, Flyway migrations
 - **Caching / Rate Limiting:** Redis
 - **Auth:** JWT (JJWT library), BCrypt
@@ -57,7 +75,7 @@ This isn't a tutorial-style URL shortener — it's built to demonstrate real bac
 
 ```mermaid
 flowchart TD
-    Client([Client]) --> RL[Rate Limit Filter]
+    UI([React Frontend]) --> RL[Rate Limit Filter]
     RL --> Redis1[(Redis<br/>rate limits + cache)]
     RL --> JWT[JWT Auth Filter]
     JWT --> Ctrl[Controllers]
@@ -71,9 +89,10 @@ flowchart TD
 ## Getting Started
 
 ### Prerequisites
-- Docker & Docker Compose (recommended), **or** Java 21 + Maven + MySQL + Redis for local setup
+- Docker & Docker Compose (recommended), **or** Java 21 + Maven + MySQL + Redis for local backend setup
+- Node.js 20+ for the frontend
 
-### Run with Docker (recommended — one command, zero manual setup)
+### Run the Backend with Docker (recommended — one command, zero manual setup)
 
 ```bash
 git clone https://github.com/SathvikSolomonS/url-shortener.git
@@ -81,7 +100,17 @@ cd url-shortener
 docker compose up --build
 ```
 
-The app will be available at `http://localhost:8080`.
+The API will be available at `http://localhost:8080`.
+
+### Running the Frontend
+
+```bash
+cd url-shortener-frontend
+npm install
+npm run dev
+```
+
+Visit `http://localhost:5173` — make sure the backend is running on port 8080 first.
 
 ### Environment Variables
 
@@ -123,6 +152,7 @@ curl -I http://localhost:8080/<shortCode>
 | Stateless JWT auth (`SessionCreationPolicy.STATELESS`) | No server-side session storage — the app can scale horizontally without sticky sessions |
 | AI tagging runs `@Async`, wrapped in try/catch | A slow or failed AI call never affects URL creation — the feature degrades gracefully |
 | Multi-stage Docker build | Final image ships only the compiled JAR on a minimal JRE base, not the full Maven/JDK toolchain |
+| CORS explicitly scoped to the frontend's origin | The API only accepts cross-origin requests from the known React dev server, not a wildcard |
 
 ## Running Tests
 
@@ -135,6 +165,14 @@ mvn test
 - Split into microservices (URL service, Analytics service, Auth service) behind an API gateway with Kafka-based async analytics — see [url-shortener-microservices](#) *(planned second project)*
 - Integration tests with Testcontainers
 - API documentation via Swagger/OpenAPI
+- Live category updates on the frontend (currently requires a manual refresh, since AI tagging is asynchronous)
+
+---
+
+## Author
+
+**Sathvik Solomon**
+[GitHub](https://github.com/SathvikSolomonS) · [LinkedIn](https://linkedin.com/in/sathviksolomon)
 
 ## License
 
