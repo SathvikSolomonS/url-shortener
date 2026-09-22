@@ -48,12 +48,12 @@ public class AiTaggingService {
                     + "Documentation, Social Media, Video, Education, Other): " + originalUrl;
 
             Map<String, Object> requestBody = Map.of(
-                "model", MODEL,
-                "messages", List.of(
-                Map.of("role", "user", "content", prompt)
-               ),
-                "max_tokens", 50,
-                "reasoning_effort", "low"
+                    "model", MODEL,
+                    "messages", List.of(
+                            Map.of("role", "user", "content", prompt)
+                    ),
+                    "max_tokens", 150,
+                    "reasoning_effort", "low"
             );
 
             Map<String, Object> response = restClient.post()
@@ -86,4 +86,4 @@ public class AiTaggingService {
             return null;
         }
     }
-}   
+}
