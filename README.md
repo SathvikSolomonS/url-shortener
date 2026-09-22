@@ -160,15 +160,6 @@ curl -I http://localhost:8080/<shortCode>
 mvn test
 ```
 
-## What's Next
-
-- Split into microservices (URL service, Analytics service, Auth service) behind an API gateway with Kafka-based async analytics — see [url-shortener-microservices](#) *(planned second project)*
-- Integration tests with Testcontainers
-- API documentation via Swagger/OpenAPI
-- Live category updates on the frontend (currently requires a manual refresh, since AI tagging is asynchronous)
-
----
-
 ## Author
 
 **Sathvik Solomon**
