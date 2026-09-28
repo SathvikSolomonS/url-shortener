@@ -1,11 +1,13 @@
 package com.urlshortener;
 
-import com.urlshortener.service.AiTaggingService;
 import com.urlshortener.dto.CreateUrlRequest;
 import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.entity.Url;
 import com.urlshortener.entity.User;
+import com.urlshortener.exception.UrlExpiredException;
+import com.urlshortener.exception.UrlNotFoundException;
 import com.urlshortener.repository.UrlRepository;
+import com.urlshortener.service.AiTaggingService;
 import com.urlshortener.service.UrlCacheService;
 import com.urlshortener.service.UrlService;
 import com.urlshortener.util.Base62Encoder;
@@ -18,8 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
-import java.util.NoSuchElementException;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,8 +42,6 @@ class UrlServiceTest {
 
     @InjectMocks
     private UrlService urlService;
-
-
 
     private User testUser;
 
@@ -81,12 +79,14 @@ class UrlServiceTest {
     }
 
     @Test
-    void getOriginalUrlAndTrack_throwsExceptionWhenShortCodeNotFound() {
+    void getOriginalUrlAndTrack_throwsNotFoundWhenShortCodeMissing() {
         when(urlCacheService.getCachedUrl("missing"))
-                .thenThrow(new NoSuchElementException("Short URL not found: missing"));
+                .thenThrow(new UrlNotFoundException("missing"));
 
-        assertThrows(NoSuchElementException.class,
+        assertThrows(UrlNotFoundException.class,
                 () -> urlService.getOriginalUrlAndTrack("missing"));
+
+        verify(urlRepository, never()).incrementClickCountByShortCode(any());
     }
 
     @Test
@@ -96,14 +96,27 @@ class UrlServiceTest {
                 .originalUrl("https://www.example.com")
                 .build();
 
-        Url foundUrl = Url.builder().id(5L).shortCode("abc123").build();
-
         when(urlCacheService.getCachedUrl("abc123")).thenReturn(cachedResponse);
-        when(urlRepository.findByShortCode("abc123")).thenReturn(Optional.of(foundUrl));
 
         UrlResponse result = urlService.getOriginalUrlAndTrack("abc123");
 
         assertEquals("https://www.example.com", result.getOriginalUrl());
-        verify(urlRepository, times(1)).incrementClickCount(5L);
+        verify(urlRepository, times(1)).incrementClickCountByShortCode("abc123");
+    }
+
+    @Test
+    void getOriginalUrlAndTrack_throwsWhenLinkExpired_evenIfCached() {
+        UrlResponse expiredResponse = UrlResponse.builder()
+                .shortCode("old123")
+                .originalUrl("https://www.example.com")
+                .expiresAt(LocalDateTime.now().minusDays(1))
+                .build();
+
+        when(urlCacheService.getCachedUrl("old123")).thenReturn(expiredResponse);
+
+        assertThrows(UrlExpiredException.class,
+                () -> urlService.getOriginalUrlAndTrack("old123"));
+
+        verify(urlRepository, never()).incrementClickCountByShortCode(any());
     }
 }

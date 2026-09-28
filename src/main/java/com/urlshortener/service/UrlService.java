@@ -1,5 +1,6 @@
 package com.urlshortener.service;
 
+import com.urlshortener.exception.UrlExpiredException;
 import com.urlshortener.dto.CreateUrlRequest;
 import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.entity.Url;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 @Service
@@ -51,13 +53,21 @@ public class UrlService {
 
     @Transactional
     public UrlResponse getOriginalUrlAndTrack(String shortCode) {
-        UrlResponse response = urlCacheService.getCachedUrl(shortCode);
+      UrlResponse url = urlCacheService.getCachedUrl(shortCode);
 
-        Url url = urlRepository.findByShortCode(shortCode)
-                .orElseThrow(() -> new NoSuchElementException("Short URL not found: " + shortCode));
-        urlRepository.incrementClickCount(url.getId());
+        if (url.getExpiresAt() != null && url.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new UrlExpiredException(shortCode);
+        }
 
-        return response;
+        urlRepository.incrementClickCountByShortCode(shortCode);
+
+        return url;
+    }
+
+    public List<UrlResponse> getUserUrls(Long userId) {
+        return urlRepository.findByUserId(userId).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     private UrlResponse toResponse(Url url) {

@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,6 +26,13 @@ public class UrlController {
             @AuthenticationPrincipal CustomUserDetails currentUser) {
         UrlResponse response = urlService.createShortUrl(request, currentUser.getUser());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/api/urls")
+    public ResponseEntity<List<UrlResponse>> getMyUrls(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        List<UrlResponse> urls = urlService.getUserUrls(currentUser.getUser().getId());
+        return ResponseEntity.ok(urls);
     }
 
     @GetMapping("/{shortCode}")
