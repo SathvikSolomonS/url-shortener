@@ -1,23 +1,24 @@
 package com.urlshortener;
 
-import com.urlshortener.exception.InvalidUrlException;
 import com.urlshortener.dto.CreateUrlRequest;
 import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.entity.Url;
 import com.urlshortener.entity.User;
+import com.urlshortener.exception.InvalidUrlException;
 import com.urlshortener.exception.UrlExpiredException;
 import com.urlshortener.exception.UrlNotFoundException;
 import com.urlshortener.repository.UrlRepository;
 import com.urlshortener.service.AiTaggingService;
 import com.urlshortener.service.UrlCacheService;
 import com.urlshortener.service.UrlService;
-import com.urlshortener.util.Base62Encoder;
+import com.urlshortener.util.ShortCodeGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -33,7 +34,7 @@ class UrlServiceTest {
     private UrlRepository urlRepository;
 
     @Mock
-    private Base62Encoder base62Encoder;
+    private ShortCodeGenerator shortCodeGenerator;
 
     @Mock
     private UrlCacheService urlCacheService;
@@ -55,28 +56,76 @@ class UrlServiceTest {
         testUser.setUsername("testuser");
     }
 
-    @Test
-    void createShortUrl_savesUrlAndReturnsResponseWithShortCode() {
-        CreateUrlRequest request = new CreateUrlRequest();
-        request.setOriginalUrl("https://www.example.com");
-
-        Url savedUrl = Url.builder()
+    private Url savedUrlWithCode(String code) {
+        return Url.builder()
                 .id(1L)
-                .shortCode("PENDING")
+                .shortCode(code)
                 .originalUrl("https://www.example.com")
                 .user(testUser)
                 .clickCount(0L)
                 .createdAt(LocalDateTime.now())
                 .build();
+    }
 
-        when(urlRepository.save(any(Url.class))).thenReturn(savedUrl);
-        when(base62Encoder.encode(1L)).thenReturn("1");
+    @Test
+    void createShortUrl_savesOnceAndReturnsGeneratedCode() {
+        CreateUrlRequest request = new CreateUrlRequest();
+        request.setOriginalUrl("https://www.example.com");
+
+        when(shortCodeGenerator.generate()).thenReturn("aZ3kP9x");
+        when(urlRepository.save(any(Url.class))).thenReturn(savedUrlWithCode("aZ3kP9x"));
 
         UrlResponse response = urlService.createShortUrl(request, testUser);
 
         assertNotNull(response);
+        assertEquals("aZ3kP9x", response.getShortCode());
+        assertEquals("http://localhost:8080/aZ3kP9x", response.getShortUrl());
         assertEquals("https://www.example.com", response.getOriginalUrl());
-        verify(urlRepository, times(2)).save(any(Url.class)); // once for insert, once to set the real short code
+        verify(urlRepository, times(1)).save(any(Url.class));
+    }
+
+    @Test
+    void createShortUrl_retriesWithNewCodeOnCollision() {
+        CreateUrlRequest request = new CreateUrlRequest();
+        request.setOriginalUrl("https://www.example.com");
+
+        when(shortCodeGenerator.generate()).thenReturn("dup1111", "ok22222");
+        when(urlRepository.save(any(Url.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate short_code"))
+                .thenReturn(savedUrlWithCode("ok22222"));
+
+        UrlResponse response = urlService.createShortUrl(request, testUser);
+
+        assertEquals("ok22222", response.getShortCode());
+        verify(shortCodeGenerator, times(2)).generate();
+        verify(urlRepository, times(2)).save(any(Url.class));
+    }
+
+    @Test
+    void createShortUrl_givesUpAfterFiveCollisions() {
+        CreateUrlRequest request = new CreateUrlRequest();
+        request.setOriginalUrl("https://www.example.com");
+
+        when(shortCodeGenerator.generate()).thenReturn("dup1111");
+        when(urlRepository.save(any(Url.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate short_code"));
+
+        assertThrows(IllegalStateException.class,
+                () -> urlService.createShortUrl(request, testUser));
+
+        verify(urlRepository, times(5)).save(any(Url.class));
+        verify(aiTaggingService, never()).categorizeUrl(any(), any());
+    }
+
+    @Test
+    void createShortUrl_rejectsNonHttpSchemes() {
+        CreateUrlRequest request = new CreateUrlRequest();
+        request.setOriginalUrl("javascript:alert(1)");
+
+        assertThrows(InvalidUrlException.class,
+                () -> urlService.createShortUrl(request, testUser));
+
+        verify(urlRepository, never()).save(any());
     }
 
     @Test
@@ -119,17 +168,5 @@ class UrlServiceTest {
                 () -> urlService.getOriginalUrlAndTrack("old123"));
 
         verify(urlRepository, never()).incrementClickCountByShortCode(any());
-    }
-
-
-        @Test
-    void createShortUrl_rejectsNonHttpSchemes() {
-        CreateUrlRequest request = new CreateUrlRequest();
-        request.setOriginalUrl("javascript:alert(1)");
-
-        assertThrows(InvalidUrlException.class,
-                () -> urlService.createShortUrl(request, testUser));
-
-        verify(urlRepository, never()).save(any());
     }
 }
