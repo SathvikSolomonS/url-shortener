@@ -17,6 +17,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final RateLimiterService rateLimiterService;
 
+    // Only rate-limit the API (login, register, create/list URLs).
+    // Redirects (/{shortCode}) are the core feature and must not be throttled per IP.
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return !request.getRequestURI().startsWith("/api/");
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
