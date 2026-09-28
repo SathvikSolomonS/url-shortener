@@ -38,7 +38,10 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
-      BASE_URL: http://localhost:8080
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      AI_TAGGING_ENABLED: ${AI_TAGGING_ENABLED:-false}
+      FORWARD_HEADERS_STRATEGY: ${FORWARD_HEADERS_STRATEGY:-none}
     depends_on:
       mysql:
         condition: service_healthy
