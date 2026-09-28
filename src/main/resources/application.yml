@@ -1,5 +1,6 @@
 server:
   port: 8080
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
 
 spring:
   application:
@@ -28,7 +29,8 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      timeout: 2000ms
+      timeout: 500ms
+      connect-timeout: 500ms
 
 app:
   jwt:
