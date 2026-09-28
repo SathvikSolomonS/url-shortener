@@ -46,7 +46,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/api/auth/**").permitAll()
-                    .requestMatchers("/actuator/**").permitAll()
+                    .requestMatchers("/actuator/health").permitAll() // only health is public
                     .requestMatchers("/{shortCode}").permitAll() // redirects stay public
                     .anyRequest().authenticated()
             )
