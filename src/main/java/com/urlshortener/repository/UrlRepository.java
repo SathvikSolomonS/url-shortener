@@ -17,6 +17,7 @@ public interface UrlRepository extends JpaRepository<Url, Long> {
     boolean existsByShortCode(String shortCode);
 
     List<Url> findByUserId(Long userId);
+    List<Url> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     // Atomically increments click_count directly in the database,
     // avoiding a read-then-write race condition under concurrent clicks

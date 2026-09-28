@@ -70,6 +70,14 @@ public class UrlService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<UrlResponse> getUrlsForUser(User user) {
+        return urlRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     private UrlResponse toResponse(Url url) {
         return UrlResponse.builder()
                 .shortCode(url.getShortCode())
