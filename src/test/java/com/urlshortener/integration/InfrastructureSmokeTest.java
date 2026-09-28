@@ -23,7 +23,7 @@ class InfrastructureSmokeTest extends IntegrationTestBase {
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1", Integer.class);
 
         assertNotNull(applied);
-        assertTrue(applied >= 2, "expected at least the V1 and V2 migrations to be applied");
+        assertTrue(applied >= 3, "expected the V1, V2 and V3 migrations to be applied");
     }
 
     @Test
