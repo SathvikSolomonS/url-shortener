@@ -62,6 +62,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, "Resource not found");
     }
 
+    @ExceptionHandler(InvalidUrlException.class)
+    public ResponseEntity<ApiError> handleInvalidUrl(InvalidUrlException e) {
+        return build(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
     // Last resort: log the real problem, but never show internal details to the client
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleEverythingElse(Exception e) {

@@ -1,5 +1,6 @@
 package com.urlshortener;
 
+import com.urlshortener.exception.InvalidUrlException;
 import com.urlshortener.dto.CreateUrlRequest;
 import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.entity.Url;
@@ -118,5 +119,17 @@ class UrlServiceTest {
                 () -> urlService.getOriginalUrlAndTrack("old123"));
 
         verify(urlRepository, never()).incrementClickCountByShortCode(any());
+    }
+
+
+        @Test
+    void createShortUrl_rejectsNonHttpSchemes() {
+        CreateUrlRequest request = new CreateUrlRequest();
+        request.setOriginalUrl("javascript:alert(1)");
+
+        assertThrows(InvalidUrlException.class,
+                () -> urlService.createShortUrl(request, testUser));
+
+        verify(urlRepository, never()).save(any());
     }
 }

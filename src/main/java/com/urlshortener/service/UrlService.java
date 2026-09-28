@@ -1,21 +1,22 @@
 package com.urlshortener.service;
 
-import com.urlshortener.exception.UrlExpiredException;
 import com.urlshortener.dto.CreateUrlRequest;
 import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.entity.Url;
 import com.urlshortener.entity.User;
+import com.urlshortener.exception.InvalidUrlException;
+import com.urlshortener.exception.UrlExpiredException;
 import com.urlshortener.repository.UrlRepository;
 import com.urlshortener.util.Base62Encoder;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
@@ -31,9 +32,11 @@ public class UrlService {
 
     @Transactional
     public UrlResponse createShortUrl(CreateUrlRequest request, User user) {
+        validateUrl(request.getOriginalUrl());
+
         Url url = Url.builder()
                 .shortCode("PENDING")
-                .originalUrl(request.getOriginalUrl())
+                .originalUrl(request.getOriginalUrl().trim())
                 .user(user)
                 .expiresAt(request.getExpiresInDays() != null
                         ? LocalDateTime.now().plusDays(request.getExpiresInDays())
@@ -51,9 +54,8 @@ public class UrlService {
         return toResponse(saved);
     }
 
-    @Transactional
     public UrlResponse getOriginalUrlAndTrack(String shortCode) {
-      UrlResponse url = urlCacheService.getCachedUrl(shortCode);
+        UrlResponse url = urlCacheService.getCachedUrl(shortCode);
 
         if (url.getExpiresAt() != null && url.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new UrlExpiredException(shortCode);
@@ -64,18 +66,25 @@ public class UrlService {
         return url;
     }
 
+    @Transactional(readOnly = true)
     public List<UrlResponse> getUserUrls(Long userId) {
-        return urlRepository.findByUserId(userId).stream()
+        return urlRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public List<UrlResponse> getUrlsForUser(User user) {
-        return urlRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    private void validateUrl(String raw) {
+        try {
+            URI uri = new URI(raw.trim());
+            String scheme = uri.getScheme();
+            boolean ok = uri.getHost() != null && scheme != null
+                    && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"));
+            if (!ok) {
+                throw new InvalidUrlException("Only http(s) URLs with a valid host are allowed");
+            }
+        } catch (URISyntaxException e) {
+            throw new InvalidUrlException("Malformed URL");
+        }
     }
 
     private UrlResponse toResponse(Url url) {
