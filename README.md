@@ -55,11 +55,12 @@ The frontend provides a full UI: register/login, create shortened URLs, and view
 | 🛡️ **Rate Limiting** | Per-IP fixed-window counter in Redis, incremented atomically with a Lua script; fails open if Redis is unavailable |
 | 🔐 **JWT Authentication** | Registration, login, BCrypt password hashing, fully stateless token validation |
 | 📊 **Atomic Click Tracking** | Race-condition-safe click counting via a single atomic SQL update |
+| 📈 **Click Analytics** | Per-day click counts via `GET /api/urls/{shortCode}/analytics`, owner-only (non-owners get 403) |
 | 🤖 **AI Auto-Categorization** | Async LLM call (Groq API) tags each URL with a category — never blocks the request path (off by default) |
 | 🗄️ **Flyway Migrations** | Versioned database schema — no manual DDL |
 | 🐳 **Dockerized backend** | Backend + MySQL + Redis run with Docker Compose (the frontend runs separately with `npm run dev`) |
 | ✅ **CI Pipeline** | GitHub Actions runs the unit tests and builds the Docker image on every push |
-| 🧪 **Unit Tested** | URL service logic and the Base62 encoder tested with JUnit 5 + Mockito |
+| 🧪 **Tested** | Service logic tested with JUnit 5 + Mockito; infrastructure smoke tests run against real MySQL and Redis via Testcontainers |
 
 ## Tech Stack
 
@@ -69,7 +70,7 @@ The frontend provides a full UI: register/login, create shortened URLs, and view
 - **Caching / Rate Limiting:** Redis
 - **Auth:** JWT (JJWT library), BCrypt
 - **AI:** Groq API (GPT-OSS model) for async URL categorization
-- **Testing:** JUnit 5, Mockito
+- **Testing:** JUnit 5, Mockito, Testcontainers
 - **DevOps:** Docker, Docker Compose, GitHub Actions
 
 ## Architecture
@@ -172,6 +173,12 @@ curl -X POST http://localhost:8080/api/urls \
 curl -I http://localhost:8080/<shortCode>
 ```
 
+**Get click analytics for your URL** (owner only — other users get `403`)
+```bash
+curl http://localhost:8080/api/urls/<shortCode>/analytics \
+  -H "Authorization: Bearer <your-token>"
+```
+
 **Health check** (the only public actuator endpoint; `info` and `metrics` require a token)
 ```bash
 curl http://localhost:8080/actuator/health
@@ -185,6 +192,7 @@ curl http://localhost:8080/actuator/health
 | No placeholder row when creating a URL | Each URL is a single insert with its final code, so concurrent creations don't serialize on a shared placeholder value |
 | Atomic click increment at the DB level | Avoids lost updates under concurrent clicks — no read-then-write race condition |
 | Cache reads separated from click-tracking writes | Click counts always hit MySQL directly, keeping analytics accurate even with caching enabled |
+| Click analytics checked against the requesting user | `GET /api/urls/{shortCode}/analytics` verifies the short code belongs to the caller before returning data, returning 403 otherwise, instead of trusting the path alone |
 | Redis failures never take the app down | A cache error handler treats Redis errors as cache misses, and the rate limiter fails open, so redirects keep working from MySQL |
 | Rate limiter as a single Lua script | `INCR` and `EXPIRE` run atomically, so a crash can't leave a counter without an expiry |
 | Restricted cache type validator | Only `com.urlshortener`, `java.util` and `java.time` classes can be deserialized from Redis |
@@ -199,12 +207,13 @@ curl http://localhost:8080/actuator/health
 mvn test
 ```
 
+> The infrastructure smoke tests spin up real MySQL and Redis containers via Testcontainers, so Docker must be running locally for `mvn test` to pass.
+
 ## What's Next
 
 Known gaps I plan to address:
 
-- Integration tests with real MySQL and Redis (Testcontainers), including a concurrency test for click counts
-- Record per-click analytics in the `click_events` table (the table exists but nothing writes to it yet)
+- A concurrency test for click counts under Testcontainers
 - Buffer click counts in Redis instead of writing to MySQL on every redirect
 - Negative caching for unknown short codes, and a cache-stampede guard
 - Refresh tokens and token revocation
