@@ -22,7 +22,6 @@ A URL shortening service built with Spring Boot and React, featuring Redis cachi
 - [API Reference](#api-reference)
 - [Key Design Decisions](#key-design-decisions)
 - [Running Tests](#running-tests)
-- [What's Next](#whats-next)
 
 ---
 
@@ -33,7 +32,6 @@ This project focuses on real backend engineering concerns: cache-aside caching w
 ## Project Structure
 
 This is a monorepo containing both the backend API and a React frontend:
-
 ```
 url-shortener/
 ├── src/                        # Spring Boot backend
@@ -208,16 +206,6 @@ mvn test
 ```
 
 > The infrastructure smoke tests spin up real MySQL and Redis containers via Testcontainers, so Docker must be running locally for `mvn test` to pass.
-
-## What's Next
-
-Known gaps I plan to address:
-
-- A concurrency test for click counts under Testcontainers
-- Buffer click counts in Redis instead of writing to MySQL on every redirect
-- Negative caching for unknown short codes, and a cache-stampede guard
-- Refresh tokens and token revocation
-- Pagination for the "my links" endpoint
 
 ## Author
 
