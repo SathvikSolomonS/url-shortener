@@ -5,6 +5,7 @@ import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.entity.Url;
 import com.urlshortener.entity.User;
 import com.urlshortener.exception.InvalidUrlException;
+import com.urlshortener.exception.UrlAccessDeniedException;
 import com.urlshortener.exception.UrlExpiredException;
 import com.urlshortener.exception.UrlNotFoundException;
 import com.urlshortener.repository.ClickEventRepository;
@@ -24,6 +25,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -180,5 +183,31 @@ class UrlServiceTest {
 
         verify(urlRepository, never()).incrementClickCountByShortCode(any());
         verify(clickEventService, never()).recordClick(any(), any(), any(), any());
+    }
+
+    @Test
+    void getClickAnalytics_returnsDataForOwner() {
+        User owner = new User();
+        owner.setId(1L);
+
+        Url url = Url.builder().id(10L).shortCode("abc123").user(owner).build();
+        when(urlRepository.findByShortCode("abc123")).thenReturn(Optional.of(url));
+        when(clickEventRepository.countClicksByDay(10L)).thenReturn(List.of());
+
+        assertDoesNotThrow(() -> urlService.getClickAnalytics("abc123", 1L));
+    }
+
+    @Test
+    void getClickAnalytics_rejectsNonOwner() {
+        User owner = new User();
+        owner.setId(1L);
+
+        Url url = Url.builder().id(10L).shortCode("abc123").user(owner).build();
+        when(urlRepository.findByShortCode("abc123")).thenReturn(Optional.of(url));
+
+        assertThrows(UrlAccessDeniedException.class,
+                () -> urlService.getClickAnalytics("abc123", 999L));
+
+        verify(clickEventRepository, never()).countClicksByDay(any());
     }
 }

@@ -34,6 +34,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.GONE, e.getMessage());
     }
 
+    
+    @ExceptionHandler(UrlAccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(UrlAccessDeniedException e) {
+        return build(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()

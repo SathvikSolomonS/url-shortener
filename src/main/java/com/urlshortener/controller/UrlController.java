@@ -37,9 +37,11 @@ public class UrlController {
         return ResponseEntity.ok(urls);
     }
 
-    @GetMapping("/api/urls/{shortCode}/analytics")
-    public ResponseEntity<List<ClickAnalyticsResponse>> getAnalytics(@PathVariable String shortCode) {
-        return ResponseEntity.ok(urlService.getClickAnalytics(shortCode));
+        @GetMapping("/api/urls/{shortCode}/analytics")
+    public ResponseEntity<List<ClickAnalyticsResponse>> getAnalytics(
+            @PathVariable String shortCode,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        return ResponseEntity.ok(urlService.getClickAnalytics(shortCode, currentUser.getUser().getId()));
     }
 
     @GetMapping("/{shortCode}")

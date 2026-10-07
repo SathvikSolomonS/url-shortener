@@ -6,12 +6,16 @@ import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.entity.Url;
 import com.urlshortener.entity.User;
 import com.urlshortener.exception.InvalidUrlException;
+import com.urlshortener.exception.UrlAccessDeniedException;
 import com.urlshortener.exception.UrlExpiredException;
+import com.urlshortener.exception.UrlNotFoundException;
 import com.urlshortener.repository.ClickEventRepository;
 import com.urlshortener.repository.UrlRepository;
 import com.urlshortener.util.ShortCodeGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -89,9 +93,14 @@ public class UrlService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public List<ClickAnalyticsResponse> getClickAnalytics(String shortCode) {
-        Url url = urlRepository.findByShortCode(shortCode).orElseThrow();
+       @Transactional(readOnly = true)
+    public List<ClickAnalyticsResponse> getClickAnalytics(String shortCode, Long requestingUserId) {
+        Url url = urlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new UrlNotFoundException(shortCode));
+
+        if (!url.getUser().getId().equals(requestingUserId)) {
+            throw new UrlAccessDeniedException(shortCode);
+        }
 
         return clickEventRepository.countClicksByDay(url.getId()).stream()
                 .map(row -> ClickAnalyticsResponse.builder()
