@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class UrlResponse {
 
+    private Long id;
     private String shortCode;
     private String shortUrl;
     private String originalUrl;

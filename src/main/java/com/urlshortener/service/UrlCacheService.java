@@ -24,6 +24,7 @@ public class UrlCacheService {
                 .orElseThrow(() -> new UrlNotFoundException(shortCode));
 
         return UrlResponse.builder()
+                .id(url.getId())
                 .shortCode(url.getShortCode())
                 .shortUrl(baseUrl + "/" + url.getShortCode())
                 .originalUrl(url.getOriginalUrl())

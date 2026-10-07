@@ -1,11 +1,13 @@
 package com.urlshortener.service;
 
+import com.urlshortener.dto.ClickAnalyticsResponse;
 import com.urlshortener.dto.CreateUrlRequest;
 import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.entity.Url;
 import com.urlshortener.entity.User;
 import com.urlshortener.exception.InvalidUrlException;
 import com.urlshortener.exception.UrlExpiredException;
+import com.urlshortener.repository.ClickEventRepository;
 import com.urlshortener.repository.UrlRepository;
 import com.urlshortener.util.ShortCodeGenerator;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.sql.Date;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -31,6 +34,8 @@ public class UrlService {
     private final ShortCodeGenerator shortCodeGenerator;
     private final UrlCacheService urlCacheService;
     private final AiTaggingService aiTaggingService;
+    private final ClickEventService clickEventService;
+    private final ClickEventRepository clickEventRepository;
 
     @Value("${app.shortener.base-url}")
     private String baseUrl;
@@ -64,7 +69,7 @@ public class UrlService {
         throw new IllegalStateException("Could not generate a unique short code");
     }
 
-    public UrlResponse getOriginalUrlAndTrack(String shortCode) {
+    public UrlResponse getOriginalUrlAndTrack(String shortCode, String ipAddress, String userAgent, String referrer) {
         UrlResponse url = urlCacheService.getCachedUrl(shortCode);
 
         if (url.getExpiresAt() != null && url.getExpiresAt().isBefore(LocalDateTime.now())) {
@@ -72,6 +77,7 @@ public class UrlService {
         }
 
         urlRepository.incrementClickCountByShortCode(shortCode);
+        clickEventService.recordClick(url.getId(), ipAddress, userAgent, referrer);
 
         return url;
     }
@@ -80,6 +86,18 @@ public class UrlService {
     public List<UrlResponse> getUserUrls(Long userId) {
         return urlRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClickAnalyticsResponse> getClickAnalytics(String shortCode) {
+        Url url = urlRepository.findByShortCode(shortCode).orElseThrow();
+
+        return clickEventRepository.countClicksByDay(url.getId()).stream()
+                .map(row -> ClickAnalyticsResponse.builder()
+                        .date(((Date) row[0]).toLocalDate())
+                        .clicks((Long) row[1])
+                        .build())
                 .toList();
     }
 
@@ -99,6 +117,7 @@ public class UrlService {
 
     private UrlResponse toResponse(Url url) {
         return UrlResponse.builder()
+                .id(url.getId())
                 .shortCode(url.getShortCode())
                 .shortUrl(baseUrl + "/" + url.getShortCode())
                 .originalUrl(url.getOriginalUrl())

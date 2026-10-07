@@ -1,9 +1,11 @@
 package com.urlshortener.controller;
 
+import com.urlshortener.dto.ClickAnalyticsResponse;
 import com.urlshortener.dto.CreateUrlRequest;
 import com.urlshortener.dto.UrlResponse;
 import com.urlshortener.security.CustomUserDetails;
 import com.urlshortener.service.UrlService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -35,9 +37,18 @@ public class UrlController {
         return ResponseEntity.ok(urls);
     }
 
+    @GetMapping("/api/urls/{shortCode}/analytics")
+    public ResponseEntity<List<ClickAnalyticsResponse>> getAnalytics(@PathVariable String shortCode) {
+        return ResponseEntity.ok(urlService.getClickAnalytics(shortCode));
+    }
+
     @GetMapping("/{shortCode}")
-    public ResponseEntity<Void> redirect(@PathVariable String shortCode) {
-        UrlResponse url = urlService.getOriginalUrlAndTrack(shortCode);
+    public ResponseEntity<Void> redirect(@PathVariable String shortCode, HttpServletRequest request) {
+        String ipAddress = request.getRemoteAddr();
+        String userAgent = request.getHeader("User-Agent");
+        String referrer = request.getHeader("Referer");
+
+        UrlResponse url = urlService.getOriginalUrlAndTrack(shortCode, ipAddress, userAgent, referrer);
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(url.getOriginalUrl()))
                 .build();

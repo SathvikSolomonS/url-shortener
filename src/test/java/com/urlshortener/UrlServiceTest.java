@@ -7,8 +7,10 @@ import com.urlshortener.entity.User;
 import com.urlshortener.exception.InvalidUrlException;
 import com.urlshortener.exception.UrlExpiredException;
 import com.urlshortener.exception.UrlNotFoundException;
+import com.urlshortener.repository.ClickEventRepository;
 import com.urlshortener.repository.UrlRepository;
 import com.urlshortener.service.AiTaggingService;
+import com.urlshortener.service.ClickEventService;
 import com.urlshortener.service.UrlCacheService;
 import com.urlshortener.service.UrlService;
 import com.urlshortener.util.ShortCodeGenerator;
@@ -41,6 +43,12 @@ class UrlServiceTest {
 
     @Mock
     private AiTaggingService aiTaggingService;
+
+    @Mock
+    private ClickEventService clickEventService;
+
+    @Mock
+    private ClickEventRepository clickEventRepository;
 
     @InjectMocks
     private UrlService urlService;
@@ -134,24 +142,27 @@ class UrlServiceTest {
                 .thenThrow(new UrlNotFoundException("missing"));
 
         assertThrows(UrlNotFoundException.class,
-                () -> urlService.getOriginalUrlAndTrack("missing"));
+                () -> urlService.getOriginalUrlAndTrack("missing", "127.0.0.1", "test-agent", null));
 
         verify(urlRepository, never()).incrementClickCountByShortCode(any());
     }
 
     @Test
-    void getOriginalUrlAndTrack_incrementsClickCountOnSuccess() {
+    void getOriginalUrlAndTrack_incrementsClickCountAndRecordsClickOnSuccess() {
         UrlResponse cachedResponse = UrlResponse.builder()
+                .id(1L)
                 .shortCode("abc123")
                 .originalUrl("https://www.example.com")
                 .build();
 
         when(urlCacheService.getCachedUrl("abc123")).thenReturn(cachedResponse);
 
-        UrlResponse result = urlService.getOriginalUrlAndTrack("abc123");
+        UrlResponse result = urlService.getOriginalUrlAndTrack("abc123", "127.0.0.1", "test-agent", "https://ref.example");
 
         assertEquals("https://www.example.com", result.getOriginalUrl());
         verify(urlRepository, times(1)).incrementClickCountByShortCode("abc123");
+        verify(clickEventService, times(1))
+                .recordClick(1L, "127.0.0.1", "test-agent", "https://ref.example");
     }
 
     @Test
@@ -165,8 +176,9 @@ class UrlServiceTest {
         when(urlCacheService.getCachedUrl("old123")).thenReturn(expiredResponse);
 
         assertThrows(UrlExpiredException.class,
-                () -> urlService.getOriginalUrlAndTrack("old123"));
+                () -> urlService.getOriginalUrlAndTrack("old123", "127.0.0.1", "test-agent", null));
 
         verify(urlRepository, never()).incrementClickCountByShortCode(any());
+        verify(clickEventService, never()).recordClick(any(), any(), any(), any());
     }
 }

@@ -24,4 +24,4 @@ public class ShortCodeGenerator {
         }
         return sb.toString();
     }
-}
+} 
